@@ -18,6 +18,8 @@ My_Data <- sample(Full_Data,size=1000,replace=FALSE)
 # Please insert your R code after this line
 #####################################################################
 
+library(ggplot2)
+
 # Maximum likelihood estimate p_hat for My_Data
 k = 5
 x_bar = mean(My_Data)
@@ -27,15 +29,38 @@ Quantity1 = k / x_bar
 n = 1000
 s = sum(My_Data - k)
 alpha_post = n * k
-beta_post = s + (1/2)
-posterior_samples = rbeta(n, shape1 = k * n, shape2 = beta_post)
+beta_post = s + 0.5
+posterior_samples = rbeta(n, shape1 = alpha_post, shape2 = beta_post)
 Quantity2 = mean(posterior_samples)
 
-# Generating samples for prior
-eps = 0.001
-p_values = seq(0.001, 0.999, length = n)
-prior_samples = rbeta(n, shape1 = eps, shape2 = 0.5)
+# Deriving the prior distribution using an approximation
+prior_samples = rbeta(n, shape1 = 0.5, shape2 = 0.5)
 
-# Plotting the prior and posterior distributions
-hist(prior_samples, breaks = 1000, xlim = c(0, 0.02), probability = TRUE, col = 'red')
-hist(posterior_samples, probability = TRUE, col = 'blue')
+# Put samples into a data frame for ggplot
+df <- rbind(
+  data.frame(p = prior_samples, type = "Jeffreys Prior"),
+  data.frame(p = posterior_samples, type = "Posterior")
+)
+
+ggplot(df, aes(x = p, fill = type)) +
+  geom_density(alpha = 0.4, adjust = 3) +
+  xlim(0, 0.3) +
+  labs(title = "Jeffreys Prior vs Posterior (Negative Binomial)",
+       x = "p", y = "Density") +
+  theme_minimal()
+
+# Posterior predictive distribution and using this
+# to find the value of pi(Z = 5|x)
+
+z = 5
+binomial_coef = choose(z - 1, k - 1)
+Quantity3 = binomial_coef * exp(lbeta(alpha_post + k, beta_post + z - k) - lbeta(alpha_post, beta_post))
+
+
+# Simulating 10000 realizations from the posterior
+# predictive distribution
+realisations = 10000
+posterior_predictive_samples = rnbinom(realisations, size = k, prob = posterior_samples)
+
+hist(posterior_predictive_samples, breaks = 30, freq = F,main = "Posterior Predictive Distribution",
+     xlab = "Count", ylab = "Frequency", col = "lightblue")
